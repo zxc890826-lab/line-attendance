@@ -910,6 +910,10 @@ function updateDistance() {
       "storeSelect"
     );
 
+  const gpsStatus =
+    document.getElementById(
+      "gpsStatus"
+    );
 
   const distanceElement =
     document.getElementById(
@@ -922,8 +926,7 @@ function updateDistance() {
     select.value === ""
   ) {
 
-    distanceElement.textContent =
-      "";
+    distanceElement.textContent = "";
 
     return;
 
@@ -938,8 +941,7 @@ function updateDistance() {
 
   if (!store) {
 
-    distanceElement.textContent =
-      "";
+    distanceElement.textContent = "";
 
     return;
 
@@ -960,14 +962,29 @@ function updateDistance() {
     );
 
 
-  distanceElement.textContent =
+  const allowedDistance =
+    store.allowedDistance || 100;
 
-    "📏 距離" +
-    store.name +
-    "約 " +
+
+  if (
+    distance <= allowedDistance
+  ) {
+
+    gpsStatus.textContent =
+      "📍 已在門市範圍內";
+
+  } else {
+
+    gpsStatus.textContent =
+      "⚠️ 不在門市範圍內";
+
+  }
+
+
+  distanceElement.textContent =
+    "距離門市約 " +
     Math.round(distance) +
     " 公尺";
-
 
 }
 
