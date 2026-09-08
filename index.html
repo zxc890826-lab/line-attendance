@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <title>員工打卡</title>
+
+  <!-- LINE LIFF SDK -->
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: #f5f6f8;
+      color: #333;
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Noto Sans TC",
+        "Microsoft JhengHei",
+        sans-serif;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 20px 16px 40px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      margin: 8px 0;
+    }
+
+    .header p {
+      margin: 0;
+      color: #777;
+      font-size: 14px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .user-info {
+      text-align: center;
+    }
+
+    .avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 8px;
+    }
+
+    .user-name {
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .datetime {
+      text-align: center;
+    }
+
+    .date {
+      font-size: 16px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    .time {
+      font-size: 36px;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+
+    .location {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+    }
+
+    .location-icon {
+      font-size: 24px;
+    }
+
+    .location-status {
+      color: #777;
+    }
+
+    .location-success {
+      color: #16803c;
+    }
+
+    .location-error {
+      color: #d93025;
+    }
+
+    .button {
+      width: 100%;
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 12px;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+
+    .button:active {
+      transform: scale(0.98);
+    }
+
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .check-in {
+      background: #16a34a;
+      color: white;
+    }
+
+    .check-out {
+      background: #dc2626;
+      color: white;
+    }
+
+    .section-title {
+      font-size: 17px;
+      font-weight: bold;
+      margin-bottom: 14px;
+    }
+
+    .record {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .record:last-child {
+      border-bottom: none;
+    }
+
+    .record-label {
+      color: #666;
+    }
+
+    .record-time {
+      font-weight: bold;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px 20px;
+      color: #777;
+    }
+
+    .message {
+      position: fixed;
+      left: 20px;
+      right: 20px;
+      bottom: 25px;
+      background: #333;
+      color: white;
+      padding: 14px 16px;
+      border-radius: 12px;
+      text-align: center;
+      display: none;
+      z-index: 999;
+    }
+
+    .message.success {
+      background: #16803c;
+    }
+
+    .message.error {
+      background: #d93025;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="loading" class="loading">
+  正在載入打卡系統...
+</div>
+
+<div id="app" class="container" style="display:none;">
+
+  <!-- 標題 -->
+  <div class="header">
+    <h1>📍 員工打卡</h1>
+    <p>請確認定位後進行打卡</p>
+  </div>
+
+  <!-- 員工 -->
+  <div class="card user-info">
+
+    <img id="avatar"
+         class="avatar"
+         src=""
+         alt="員工頭像"
+         style="display:none;">
+
+    <div id="userName" class="user-name">
+      載入中...
+    </div>
+
+  </div>
+
+  <!-- 日期時間 -->
+  <div class="card datetime">
+
+    <div id="date" class="date">
+      2026/09/08
+    </div>
+
+    <div id="time" class="time">
+      00:00:00
+    </div>
+
+  </div>
+
+  <!-- 定位 -->
+  <div class="card">
+
+    <div class="location">
+
+      <div class="location-icon">
+        📍
+      </div>
+
+      <div>
+        <div>
+          <strong>目前定位</strong>
+        </div>
+
+        <div id="locationStatus"
+             class="location-status">
+          尚未取得定位
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- 打卡 -->
+  <div class="card">
+
+    <div class="section-title">
+      今日打卡
+    </div>
+
+    <button
+      id="checkInBtn"
+      class="button check-in"
+      onclick="checkIn()">
+      🟢 上班打卡
+    </button>
+
+    <button
+      id="checkOutBtn"
+      class="button check-out"
+      onclick="checkOut()">
+      🔴 下班打卡
+    </button>
+
+  </div>
+
+  <!-- 今日紀錄 -->
+  <div class="card">
+
+    <div class="section-title">
+      今日紀錄
+    </div>
+
+    <div class="record">
+
+      <div class="record-label">
+        上班
+      </div>
+
+      <div id="checkInTime"
+           class="record-time">
+        尚未打卡
+      </div>
+
+    </div>
+
+    <div class="record">
+
+      <div class="record-label">
+        下班
+      </div>
+
+      <div id="checkOutTime"
+           class="record-time">
+        尚未打卡
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<div id="message" class="message"></div>
+
+
+<script>
+
+  /*********************************
+   * 1. LIFF ID
+   *********************************/
+
+  const LIFF_ID = "2011503589-itpEsuU9";
+
+
+  /*********************************
+   * 2. Google Apps Script API
+   *
+   * 下一步建立 Apps Script 後
+   * 再把網址貼進來
+   *********************************/
+
+  const API_URL = "";
+
+
+  /*********************************
+   * 3. 全域資料
+   *********************************/
+
+  let lineProfile = null;
+
+  let currentLocation = {
+    latitude: null,
+    longitude: null
+  };
+
+
+  /*********************************
+   * 4. 啟動
+   *********************************/
+
+  window.onload = async function() {
+
+    try {
+
+      await liff.init({
+        liffId: LIFF_ID
+      });
+
+      /*
+       * 如果不是登入狀態
+       * 要求 LINE 登入
+       */
+
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return;
+      }
+
+
+      /*
+       * 取得 LINE 使用者資料
+       */
+
+      lineProfile = await liff.getProfile();
+
+
+      /*
+       * 顯示姓名
+       */
+
+      document.getElementById("userName").innerText =
+        lineProfile.displayName;
+
+
+      /*
+       * 顯示頭像
+       */
+
+      if (lineProfile.pictureUrl) {
+
+        const avatar =
+          document.getElementById("avatar");
+
+        avatar.src = lineProfile.pictureUrl;
+        avatar.style.display = "inline-block";
+      }
+
+
+      /*
+       * 啟動時間
+       */
+
+      updateClock();
+
+      setInterval(updateClock, 1000);
+
+
+      /*
+       * 取得 GPS
+       */
+
+      getLocation();
+
+
+      /*
+       * 載入今日紀錄
+       */
+
+      loadTodayRecord();
+
+
+      /*
+       * 顯示頁面
+       */
+
+      document.getElementById("loading")
+        .style.display = "none";
+
+      document.getElementById("app")
+        .style.display = "block";
+
+    }
+
+    catch (error) {
+
+      console.error(error);
+
+      showMessage(
+        "系統載入失敗：" + error.message,
+        "error"
+      );
+    }
+
+  };
+
+
+  /*********************************
+   * 5. 顯示時間
+   *********************************/
+
+  function updateClock() {
+
+    const now = new Date();
+
+    const year =
+      now.getFullYear();
+
+    const month =
+      String(now.getMonth() + 1)
+      .padStart(2, "0");
+
+    const day =
+      String(now.getDate())
+      .padStart(2, "0");
+
+    const hour =
+      String(now.getHours())
+      .padStart(2, "0");
+
+    const minute =
+      String(now.getMinutes())
+      .padStart(2, "0");
+
+    const second =
+      String(now.getSeconds())
+      .padStart(2, "0");
+
+
+    document.getElementById("date")
+      .innerText =
+      `${year}/${month}/${day}`;
+
+
+    document.getElementById("time")
+      .innerText =
+      `${hour}:${minute}:${second}`;
+  }
+
+
+  /*********************************
+   * 6. GPS
+   *********************************/
+
+  function getLocation() {
+
+    const status =
+      document.getElementById("locationStatus");
+
+
+    if (!navigator.geolocation) {
+
+      status.innerText =
+        "此裝置不支援定位";
+
+      status.className =
+        "location-status location-error";
+
+      return;
+    }
+
+
+    status.innerText =
+      "正在取得定位...";
+
+
+    navigator.geolocation.getCurrentPosition(
+
+      function(position) {
+
+        currentLocation.latitude =
+          position.coords.latitude;
+
+        currentLocation.longitude =
+          position.coords.longitude;
+
+
+        status.innerText =
+          "定位成功 ✓";
+
+
+        status.className =
+          "location-status location-success";
+
+      },
+
+      function(error) {
+
+        console.error(error);
+
+
+        status.innerText =
+          "無法取得定位，請允許定位權限";
+
+
+        status.className =
+          "location-status location-error";
+      },
+
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+
+    );
+
+  }
+
+
+  /*********************************
+   * 7. 上班打卡
+   *********************************/
+
+  async function checkIn() {
+
+    await submitAttendance("上班");
+
+  }
+
+
+  /*********************************
+   * 8. 下班打卡
+   *********************************/
+
+  async function checkOut() {
+
+    await submitAttendance("下班");
+
+  }
+
+
+  /*********************************
+   * 9. 送出打卡
+   *********************************/
+
+  async function submitAttendance(type) {
+
+    /*
+     * 確認 GPS
+     */
+
+    if (
+      currentLocation.latitude === null ||
+      currentLocation.longitude === null
+    ) {
+
+      showMessage(
+        "尚未取得定位，請先允許定位權限",
+        "error"
+      );
+
+      getLocation();
+
+      return;
+    }
+
+
+    /*
+     * 防止重複點擊
+     */
+
+    const checkInBtn =
+      document.getElementById("checkInBtn");
+
+    const checkOutBtn =
+      document.getElementById("checkOutBtn");
+
+
+    checkInBtn.disabled = true;
+    checkOutBtn.disabled = true;
+
+
+    /*
+     * 打卡資料
+     */
+
+    const data = {
+
+      lineUserId:
+        lineProfile.userId,
+
+      name:
+        lineProfile.displayName,
+
+      type:
+        type,
+
+      latitude:
+        currentLocation.latitude,
+
+      longitude:
+        currentLocation.longitude,
+
+      clientTime:
+        new Date().toISOString()
+
+    };
+
+
+    try {
+
+      /*
+       * 如果還沒有設定 API
+       */
+
+      if (!API_URL) {
+
+        /*
+         * 測試階段先在 Console 看資料
+         */
+
+        console.log("打卡資料：", data);
+
+
+        /*
+         * 模擬成功
+         */
+
+        saveLocalRecord(type);
+
+
+        showMessage(
+          `${type}打卡成功！`,
+          "success"
+        );
+
+      }
+
+      else {
+
+        /*
+         * 正式送到 Google Apps Script
+         */
+
+        const response =
+          await fetch(API_URL, {
+
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "text/plain;charset=utf-8"
+            },
+
+            body:
+              JSON.stringify(data)
+
+          });
+
+
+        const result =
+          await response.json();
+
+
+        if (result.success) {
+
+          showMessage(
+            `${type}打卡成功！`,
+            "success"
+          );
+
+          loadTodayRecord();
+
+        }
+
+        else {
+
+          showMessage(
+            result.message ||
+            "打卡失敗",
+            "error"
+          );
+
+        }
+
+      }
+
+    }
+
+    catch (error) {
+
+      console.error(error);
+
+      showMessage(
+        "打卡失敗，請稍後再試",
+        "error"
+      );
+
+    }
+
+    finally {
+
+      checkInBtn.disabled = false;
+      checkOutBtn.disabled = false;
+
+    }
+
+  }
+
+
+  /*********************************
+   * 10. 今日紀錄
+   *
+   * 暫時使用瀏覽器儲存
+   * 下一步改成 Google Sheets
+   *********************************/
+
+  function saveLocalRecord(type) {
+
+    const today =
+      new Date().toLocaleDateString(
+        "zh-TW"
+      );
+
+
+    const key =
+      `attendance_${lineProfile.userId}_${today}`;
+
+
+    let record =
+      JSON.parse(
+        localStorage.getItem(key) ||
+        "{}"
+      );
+
+
+    const now =
+      new Date();
+
+
+    const time =
+      now.toLocaleTimeString(
+        "zh-TW",
+        {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit"
+        }
+      );
+
+
+    if (type === "上班") {
+
+      record.checkIn = time;
+
+      document.getElementById(
+        "checkInTime"
+      ).innerText = time;
+
+    }
+
+
+    if (type === "下班") {
+
+      record.checkOut = time;
+
+      document.getElementById(
+        "checkOutTime"
+      ).innerText = time;
+
+    }
+
+
+    localStorage.setItem(
+      key,
+      JSON.stringify(record)
+    );
+
+  }
+
+
+  /*********************************
+   * 11. 載入今日紀錄
+   *********************************/
+
+  function loadTodayRecord() {
+
+    if (!lineProfile) {
+      return;
+    }
+
+
+    const today =
+      new Date().toLocaleDateString(
+        "zh-TW"
+      );
+
+
+    const key =
+      `attendance_${lineProfile.userId}_${today}`;
+
+
+    const record =
+      JSON.parse(
+        localStorage.getItem(key) ||
+        "{}"
+      );
+
+
+    if (record.checkIn) {
+
+      document.getElementById(
+        "checkInTime"
+      ).innerText =
+        record.checkIn;
+
+    }
+
+
+    if (record.checkOut) {
+
+      document.getElementById(
+        "checkOutTime"
+      ).innerText =
+        record.checkOut;
+
+    }
+
+  }
+
+
+  /*********************************
+   * 12. 顯示訊息
+   *********************************/
+
+  function showMessage(
+    text,
+    type = ""
+  ) {
+
+    const message =
+      document.getElementById("message");
+
+
+    message.innerText = text;
+
+    message.className =
+      "message " + type;
+
+
+    message.style.display =
+      "block";
+
+
+    setTimeout(function() {
+
+      message.style.display =
+        "none";
+
+    }, 3000);
+
+  }
+
+</script>
+
+</body>
+</html>
