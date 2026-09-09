@@ -259,6 +259,8 @@
     }
 
 
+    /* 今日紀錄 */
+
     .record {
 
       display: flex;
@@ -301,6 +303,19 @@
     }
 
 
+    .record-time {
+
+      font-size: 14px;
+
+      font-weight: 600;
+
+      color: #555;
+
+      white-space: nowrap;
+
+    }
+
+
     .empty {
 
       text-align: center;
@@ -338,9 +353,9 @@
   <div class="container">
 
 
-    <!-- =========================
+    <!-- ==================================================
          個人資訊
-    ========================== -->
+    ================================================== -->
 
     <div class="card header">
 
@@ -369,9 +384,9 @@
 
 
 
-    <!-- =========================
-         打卡
-    ========================== -->
+    <!-- ==================================================
+         打卡區域
+    ================================================== -->
 
     <div class="card">
 
@@ -379,6 +394,8 @@
         今日打卡
       </div>
 
+
+      <!-- 門市 -->
 
       <label for="storeSelect">
         選擇門市
@@ -410,7 +427,7 @@
       </div>
 
 
-      <!-- 按鈕 -->
+      <!-- 打卡按鈕 -->
 
       <div class="button-group">
 
@@ -434,6 +451,8 @@
       </div>
 
 
+      <!-- 系統訊息 -->
+
       <div
         id="status"
         class="status"
@@ -443,9 +462,9 @@
 
 
 
-    <!-- =========================
+    <!-- ==================================================
          今日紀錄
-    ========================== -->
+    ================================================== -->
 
     <div class="card">
 
@@ -483,7 +502,7 @@ const API_URL =
   "https://script.google.com/macros/s/AKfycbwCtCiKz11TnuhGFdcBblkyEbrTq7AD-BDu9W0N3_oT85nj_yv1x_dBgT9HBKU3z6jXEA/exec";
 
 
-// 你的 LIFF ID
+// LIFF ID
 
 const LIFF_ID =
   "2011503589-itpEsuU9";
@@ -510,19 +529,41 @@ window.onload = async function () {
 
   try {
 
+    // 1. 初始化 LINE
+
     await initializeLIFF();
+
+
+    // 如果尚未登入
+    // initializeLIFF 會處理登入
+
+    if (!currentUser) {
+      return;
+    }
+
+
+    // 2. 取得門市
 
     await loadStores();
 
+
+    // 3. 取得 GPS
+
     getLocation();
 
-    loadTodayRecords();
+
+    // 4. 取得今日紀錄
+
+    await loadTodayRecords();
 
   }
 
   catch (error) {
 
-    console.error(error);
+    console.error(
+      "系統啟動錯誤:",
+      error
+    );
 
     showStatus(
       "系統載入失敗，請重新整理頁面"
@@ -544,6 +585,8 @@ async function initializeLIFF() {
   });
 
 
+  // 尚未登入
+
   if (!liff.isLoggedIn()) {
 
     liff.login();
@@ -552,6 +595,8 @@ async function initializeLIFF() {
 
   }
 
+
+  // 取得 LINE 個人資料
 
   const profile =
     await liff.getProfile();
@@ -571,17 +616,23 @@ async function initializeLIFF() {
   };
 
 
+  // 顯示姓名
+
   document.getElementById(
     "userName"
   ).textContent =
     profile.displayName;
 
 
+  // 顯示頭像
+
   document.getElementById(
     "avatar"
   ).src =
     profile.pictureUrl;
 
+
+  // 顯示日期
 
   document.getElementById(
     "todayDate"
@@ -670,6 +721,8 @@ async function loadStores() {
     select.innerHTML = "";
 
 
+    // 沒有門市
+
     if (stores.length === 0) {
 
       select.innerHTML =
@@ -679,6 +732,8 @@ async function loadStores() {
 
     }
 
+
+    // 預設選項
 
     const defaultOption =
       document.createElement(
@@ -697,8 +752,10 @@ async function loadStores() {
     );
 
 
+    // 加入所有門市
+
     stores.forEach(
-      function (store, index) {
+      function(store, index) {
 
         const option =
           document.createElement(
@@ -722,6 +779,8 @@ async function loadStores() {
     );
 
 
+    // 選擇門市時重新計算距離
+
     select.onchange =
       updateDistance;
 
@@ -730,7 +789,10 @@ async function loadStores() {
 
   catch (error) {
 
-    console.error(error);
+    console.error(
+      "取得門市錯誤:",
+      error
+    );
 
 
     select.innerHTML =
@@ -774,7 +836,7 @@ function getLocation() {
 
   navigator.geolocation.getCurrentPosition(
 
-    function (position) {
+    function(position) {
 
       currentPosition =
         position;
@@ -788,6 +850,13 @@ function getLocation() {
         position.coords.longitude;
 
 
+      console.log(
+        "GPS:",
+        latitude,
+        longitude
+      );
+
+
       gpsStatus.innerHTML =
         "📍 GPS 已取得<br>" +
         "緯度：" +
@@ -797,21 +866,26 @@ function getLocation() {
         longitude.toFixed(6);
 
 
+      // 更新距離
+
       updateDistance();
 
     },
 
 
-    function (error) {
+    function(error) {
 
-      console.error(error);
+      console.error(
+        "GPS 錯誤:",
+        error
+      );
 
 
       gpsStatus.textContent =
         "❌ 無法取得 GPS，請確認手機定位權限";
 
-
     },
+
 
     {
 
@@ -841,7 +915,6 @@ function calculateDistance(
 
 ) {
 
-
   const R =
     6371000;
 
@@ -867,11 +940,15 @@ function calculateDistance(
 
     Math.cos(
       toRadians(lat1)
-    ) *
+    )
+
+    *
 
     Math.cos(
       toRadians(lat2)
-    ) *
+    )
+
+    *
 
     Math.sin(dLon / 2) *
     Math.sin(dLon / 2);
@@ -889,6 +966,10 @@ function calculateDistance(
 
 }
 
+
+// ==================================================
+// 度數轉弧度
+// ==================================================
 
 function toRadians(degrees) {
 
@@ -910,10 +991,12 @@ function updateDistance() {
       "storeSelect"
     );
 
+
   const gpsStatus =
     document.getElementById(
       "gpsStatus"
     );
+
 
   const distanceElement =
     document.getElementById(
@@ -921,12 +1004,15 @@ function updateDistance() {
     );
 
 
+  // 尚未取得 GPS 或尚未選門市
+
   if (
     !currentPosition ||
     select.value === ""
   ) {
 
-    distanceElement.textContent = "";
+    distanceElement.textContent =
+      "";
 
     return;
 
@@ -941,12 +1027,15 @@ function updateDistance() {
 
   if (!store) {
 
-    distanceElement.textContent = "";
+    distanceElement.textContent =
+      "";
 
     return;
 
   }
 
+
+  // 計算距離
 
   const distance =
     calculateDistance(
@@ -966,6 +1055,8 @@ function updateDistance() {
     store.allowedDistance || 100;
 
 
+  // 顯示 GPS 狀態
+
   if (
     distance <= allowedDistance
   ) {
@@ -973,13 +1064,17 @@ function updateDistance() {
     gpsStatus.textContent =
       "📍 已在門市範圍內";
 
-  } else {
+  }
+
+  else {
 
     gpsStatus.textContent =
       "⚠️ 不在門市範圍內";
 
   }
 
+
+  // 顯示距離
 
   distanceElement.textContent =
     "距離門市約 " +
@@ -995,90 +1090,147 @@ function updateDistance() {
 
 async function submitAttendance(type) {
 
+  // 確認 LINE 使用者
+
   if (!currentUser) {
-    showStatus("尚未取得 LINE 使用者資料");
+
+    showStatus(
+      "尚未取得 LINE 使用者資料"
+    );
+
     return;
+
   }
+
+
+  // 取得門市
 
   const select =
-    document.getElementById("storeSelect");
+    document.getElementById(
+      "storeSelect"
+    );
+
 
   if (select.value === "") {
-    showStatus("請先選擇門市");
+
+    showStatus(
+      "請先選擇門市"
+    );
+
     return;
+
   }
+
+
+  // 確認 GPS
 
   if (!currentPosition) {
-    showStatus("尚未取得 GPS 位置");
+
+    showStatus(
+      "尚未取得 GPS 位置"
+    );
+
     return;
+
   }
+
+
+  // 取得門市資料
 
   const store =
-    stores[Number(select.value)];
+    stores[
+      Number(select.value)
+    ];
+
 
   if (!store) {
-    showStatus("門市資料錯誤");
+
+    showStatus(
+      "門市資料錯誤"
+    );
+
     return;
+
   }
 
 
+  // ==================================================
   // 防止連續點擊
+  // ==================================================
 
   const button =
     type === "上班"
-      ? document.getElementById("checkinButton")
-      : document.getElementById("checkoutButton");
+      ? document.getElementById(
+          "checkinButton"
+        )
+      : document.getElementById(
+          "checkoutButton"
+        );
+
 
   button.disabled = true;
 
-  showStatus("正在打卡...");
+
+  showStatus(
+    "正在打卡..."
+  );
 
 
   try {
 
     // ==================================================
-    // 使用 GET 傳送資料
-    // 避免 GitHub Pages → Apps Script 的 POST CORS 問題
+    // 使用 GET 傳送
     // ==================================================
 
     const params =
       new URLSearchParams();
+
 
     params.append(
       "action",
       "submitAttendance"
     );
 
+
     params.append(
       "lineUserId",
       currentUser.userId
     );
+
 
     params.append(
       "name",
       currentUser.name
     );
 
+
     params.append(
       "type",
       type
     );
+
 
     params.append(
       "store",
       store.name
     );
 
+
     params.append(
       "latitude",
       currentPosition.coords.latitude
     );
+
 
     params.append(
       "longitude",
       currentPosition.coords.longitude
     );
 
+
+    // ==================================================
+    // 呼叫 Google Apps Script
+    // ==================================================
 
     const response =
       await fetch(
@@ -1098,19 +1250,29 @@ async function submitAttendance(type) {
     );
 
 
+    // ==================================================
+    // 打卡失敗
+    // ==================================================
+
     if (!result.success) {
 
       showStatus(
         result.message
       );
 
+
       button.disabled =
         false;
+
 
       return;
 
     }
 
+
+    // ==================================================
+    // 打卡成功
+    // ==================================================
 
     showStatus(
       "✅ " +
@@ -1118,21 +1280,25 @@ async function submitAttendance(type) {
     );
 
 
-    // 成功後重新取得今日紀錄
+    // 重新取得今日紀錄
 
     await loadTodayRecords();
 
+  }
 
-  } catch (error) {
+
+  catch (error) {
 
     console.error(
       "打卡錯誤:",
       error
     );
 
+
     showStatus(
       "打卡失敗，請稍後再試"
     );
+
 
     button.disabled =
       false;
@@ -1143,7 +1309,7 @@ async function submitAttendance(type) {
 
 
 // ==================================================
-// 今日紀錄
+// 取得今日紀錄
 // ==================================================
 
 async function loadTodayRecords() {
@@ -1158,25 +1324,195 @@ async function loadTodayRecords() {
     '<div class="loading">載入今日紀錄中...</div>';
 
 
-  // ------------------------------------------------
-  // 目前 Apps Script 還沒有提供查詢紀錄 API
-  // ------------------------------------------------
-  //
-  // 所以這裡先顯示提示。
-  //
-  // 下一步加入 getTodayRecords()
-  // 後，這裡就會真正顯示資料。
-  // ------------------------------------------------
+  // 確認使用者
+
+  if (!currentUser) {
+
+    container.innerHTML =
+      '<div class="empty">尚未取得使用者資料</div>';
+
+    return;
+
+  }
 
 
-  container.innerHTML =
+  try {
 
-    '<div class="empty">' +
-    '今日紀錄功能即將完成' +
-    '</div>';
+    // ==================================================
+    // 建立查詢參數
+    // ==================================================
+
+    const params =
+      new URLSearchParams();
 
 
-  updateButtonStatus();
+    params.append(
+      "action",
+      "getTodayRecords"
+    );
+
+
+    params.append(
+      "lineUserId",
+      currentUser.userId
+    );
+
+
+    // ==================================================
+    // 呼叫 API
+    // ==================================================
+
+    const response =
+      await fetch(
+        API_URL +
+        "?" +
+        params.toString()
+      );
+
+
+    const result =
+      await response.json();
+
+
+    console.log(
+      "今日紀錄:",
+      result
+    );
+
+
+    // ==================================================
+    // 查詢失敗
+    // ==================================================
+
+    if (!result.success) {
+
+      container.innerHTML =
+        '<div class="empty">' +
+        result.message +
+        '</div>';
+
+      return;
+
+    }
+
+
+    // ==================================================
+    // 取得紀錄
+    // ==================================================
+
+    const records =
+      result.records || [];
+
+
+    todayRecords =
+      records;
+
+
+    // ==================================================
+    // 沒有紀錄
+    // ==================================================
+
+    if (records.length === 0) {
+
+      container.innerHTML =
+        '<div class="empty">' +
+        '今天尚未打卡' +
+        '</div>';
+
+
+      updateButtonStatus(
+        records
+      );
+
+
+      return;
+
+    }
+
+
+    // ==================================================
+    // 清空原本內容
+    // ==================================================
+
+    container.innerHTML =
+      "";
+
+
+    // ==================================================
+    // 顯示每一筆紀錄
+    // ==================================================
+
+    records.forEach(
+      function(record) {
+
+        const item =
+          document.createElement(
+            "div"
+          );
+
+
+        item.className =
+          "record";
+
+
+        item.innerHTML =
+
+          '<div>' +
+
+            '<div class="record-type">' +
+              escapeHtml(
+                record.type
+              ) +
+            '</div>' +
+
+            '<div class="record-info">' +
+              escapeHtml(
+                record.store
+              ) +
+            '</div>' +
+
+          '</div>' +
+
+          '<div class="record-time">' +
+            escapeHtml(
+              record.time
+            ) +
+          '</div>';
+
+
+        container.appendChild(
+          item
+        );
+
+      }
+    );
+
+
+    // ==================================================
+    // 更新按鈕狀態
+    // ==================================================
+
+    updateButtonStatus(
+      records
+    );
+
+  }
+
+
+  catch (error) {
+
+    console.error(
+      "取得今日紀錄失敗:",
+      error
+    );
+
+
+    container.innerHTML =
+      '<div class="empty">' +
+      '今日紀錄載入失敗' +
+      '</div>';
+
+  }
 
 }
 
@@ -1185,10 +1521,170 @@ async function loadTodayRecords() {
 // 更新按鈕狀態
 // ==================================================
 
-function updateButtonStatus() {
+function updateButtonStatus(records) {
 
-  // 下一階段接 Google Sheet
-  // 查詢今天是否已經上班／下班
+  const checkinButton =
+    document.getElementById(
+      "checkinButton"
+    );
+
+
+  const checkoutButton =
+    document.getElementById(
+      "checkoutButton"
+    );
+
+
+  if (
+    !checkinButton ||
+    !checkoutButton
+  ) {
+
+    return;
+
+  }
+
+
+  records =
+    records || [];
+
+
+  let hasCheckin =
+    false;
+
+
+  let hasCheckout =
+    false;
+
+
+  // ==================================================
+  // 判斷今天是否已經打卡
+  // ==================================================
+
+  records.forEach(
+    function(record) {
+
+      if (
+        record.type === "上班"
+      ) {
+
+        hasCheckin =
+          true;
+
+      }
+
+
+      if (
+        record.type === "下班"
+      ) {
+
+        hasCheckout =
+          true;
+
+      }
+
+    }
+  );
+
+
+  // ==================================================
+  // 上班按鈕
+  // ==================================================
+
+  if (hasCheckin) {
+
+    checkinButton.disabled =
+      true;
+
+
+    checkinButton.textContent =
+      "✓ 已完成上班打卡";
+
+  }
+
+  else {
+
+    checkinButton.disabled =
+      false;
+
+
+    checkinButton.textContent =
+      "上班打卡";
+
+  }
+
+
+  // ==================================================
+  // 下班按鈕
+  // ==================================================
+
+  if (hasCheckout) {
+
+    checkoutButton.disabled =
+      true;
+
+
+    checkoutButton.textContent =
+      "✓ 已完成下班打卡";
+
+  }
+
+  else {
+
+    checkoutButton.disabled =
+      false;
+
+
+    checkoutButton.textContent =
+      "下班打卡";
+
+  }
+
+}
+
+
+// ==================================================
+// HTML 安全處理
+// ==================================================
+
+function escapeHtml(value) {
+
+  if (
+    value === null ||
+    value === undefined
+  ) {
+
+    return "";
+
+  }
+
+
+  return String(value)
+
+    .replace(
+      /&/g,
+      "&amp;"
+    )
+
+    .replace(
+      /</g,
+      "&lt;"
+    )
+
+    .replace(
+      />/g,
+      "&gt;"
+    )
+
+    .replace(
+      /"/g,
+      "&quot;"
+    )
+
+    .replace(
+      /'/g,
+      "&#039;"
+    );
 
 }
 
@@ -1197,9 +1693,7 @@ function updateButtonStatus() {
 // 顯示訊息
 // ==================================================
 
-function showStatus(
-  message
-) {
+function showStatus(message) {
 
   const element =
     document.getElementById(
