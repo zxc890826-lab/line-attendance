@@ -993,64 +993,32 @@ function updateDistance() {
 // 打卡
 // ==================================================
 
-async function submitAttendance(
-  type
-) {
-
+async function submitAttendance(type) {
 
   if (!currentUser) {
-
-    showStatus(
-      "尚未取得 LINE 使用者資料"
-    );
-
+    showStatus("尚未取得 LINE 使用者資料");
     return;
-
   }
-
 
   const select =
-    document.getElementById(
-      "storeSelect"
-    );
-
+    document.getElementById("storeSelect");
 
   if (select.value === "") {
-
-    showStatus(
-      "請先選擇門市"
-    );
-
+    showStatus("請先選擇門市");
     return;
-
   }
-
 
   if (!currentPosition) {
-
-    showStatus(
-      "尚未取得 GPS 位置"
-    );
-
+    showStatus("尚未取得 GPS 位置");
     return;
-
   }
 
-
   const store =
-    stores[
-      Number(select.value)
-    ];
-
+    stores[Number(select.value)];
 
   if (!store) {
-
-    showStatus(
-      "門市資料錯誤"
-    );
-
+    showStatus("門市資料錯誤");
     return;
-
   }
 
 
@@ -1058,69 +1026,65 @@ async function submitAttendance(
 
   const button =
     type === "上班"
+      ? document.getElementById("checkinButton")
+      : document.getElementById("checkoutButton");
 
-      ? document.getElementById(
-          "checkinButton"
-        )
+  button.disabled = true;
 
-      : document.getElementById(
-          "checkoutButton"
-        );
-
-
-  button.disabled =
-    true;
-
-
-  showStatus(
-    "正在打卡..."
-  );
-
-
-  const data = {
-
-    lineUserId:
-      currentUser.userId,
-
-    name:
-      currentUser.name,
-
-    type:
-      type,
-
-    latitude:
-      currentPosition.coords.latitude,
-
-    longitude:
-      currentPosition.coords.longitude,
-
-    store:
-      store.name
-
-  };
+  showStatus("正在打卡...");
 
 
   try {
 
+    // ==================================================
+    // 使用 GET 傳送資料
+    // 避免 GitHub Pages → Apps Script 的 POST CORS 問題
+    // ==================================================
+
+    const params =
+      new URLSearchParams();
+
+    params.append(
+      "action",
+      "submitAttendance"
+    );
+
+    params.append(
+      "lineUserId",
+      currentUser.userId
+    );
+
+    params.append(
+      "name",
+      currentUser.name
+    );
+
+    params.append(
+      "type",
+      type
+    );
+
+    params.append(
+      "store",
+      store.name
+    );
+
+    params.append(
+      "latitude",
+      currentPosition.coords.latitude
+    );
+
+    params.append(
+      "longitude",
+      currentPosition.coords.longitude
+    );
+
 
     const response =
       await fetch(
-        API_URL,
-        {
-
-          method: "POST",
-
-          headers: {
-
-            "Content-Type":
-              "text/plain;charset=utf-8"
-
-          },
-
-          body:
-            JSON.stringify(data)
-
-        }
+        API_URL +
+        "?" +
+        params.toString()
       );
 
 
@@ -1140,10 +1104,8 @@ async function submitAttendance(
         result.message
       );
 
-
       button.disabled =
         false;
-
 
       return;
 
@@ -1161,17 +1123,16 @@ async function submitAttendance(
     await loadTodayRecords();
 
 
-  }
+  } catch (error) {
 
-  catch (error) {
-
-    console.error(error);
-
+    console.error(
+      "打卡錯誤:",
+      error
+    );
 
     showStatus(
       "打卡失敗，請稍後再試"
     );
-
 
     button.disabled =
       false;
@@ -1267,4 +1228,3 @@ function showStatus(
 </body>
 
 </html>
-
